@@ -2,7 +2,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
 using System.Runtime.Serialization;
 
 using Newtonsoft.Json;
@@ -16,84 +15,17 @@ using IdentikeyAuthWrapper.vasco.identikey.authentication;
 
 namespace net.vieapps.Services.OTPs
 {
-	public class ServiceComponent : BaseService
+	public class ServiceComponent : ServiceBase
 	{
 
-		#region Start
 		public ServiceComponent() { }
-
-		void WriteInfo(string correlationID, string info, Exception ex = null, bool writeLogs = true)
-		{
-			// prepare
-			var msg = string.IsNullOrWhiteSpace(info)
-				? ex?.Message ?? ""
-				: info;
-
-			// write to logs
-			if (writeLogs)
-				this.WriteLog(correlationID ?? UtilityService.NewUID, this.ServiceName, null, msg, ex);
-
-			// write to console
-			if (!Program.AsService)
-			{
-				Console.WriteLine(msg);
-				if (ex != null)
-					Console.WriteLine("-----------------------\r\n" + "==> [" + ex.GetType().GetTypeName(true) + "]: " + ex.Message + "\r\n" + ex.StackTrace + "\r\n-----------------------");
-				else
-					Console.WriteLine("~~~~~~~~~~~~~~~~~~~~>");
-			}
-		}
-
-		internal void Start(string[] args = null, System.Action nextAction = null, Func<Task> nextActionAsync = null)
-		{
-			// prepare
-			var correlationID = UtilityService.NewUID;
-
-			// start the service
-			Task.Run(async () =>
-			{
-				try
-				{
-					await this.StartAsync(
-						service => this.WriteInfo(correlationID, "The service is registered - PID: " + Process.GetCurrentProcess().Id.ToString()),
-						exception => this.WriteInfo(correlationID, "Error occurred while registering the service", exception)
-					);
-				}
-				catch (Exception ex)
-				{
-					this.WriteInfo(correlationID, "Error occurred while starting the service", ex);
-				}
-			})
-			.ContinueWith(async (task) =>
-			{
-				try
-				{
-					nextAction?.Invoke();
-				}
-				catch (Exception ex)
-				{
-					this.WriteInfo(correlationID, "Error occurred while running the next action (sync)", ex);
-				}
-				if (nextActionAsync != null)
-					try
-					{
-						await nextActionAsync().ConfigureAwait(false);
-					}
-					catch (Exception ex)
-					{
-						this.WriteInfo(correlationID, "Error occurred while running the next action (async)", ex);
-					}
-			})
-			.ConfigureAwait(false);
-		}
-		#endregion
 
 		public override string ServiceName { get { return "otps"; } }
 
 		public override async Task<JObject> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
 #if DEBUG
-			this.WriteInfo(requestInfo.CorrelationID, "Process the request\r\n==> Request:\r\n" + requestInfo.ToJson().ToString(Formatting.Indented), null, false);
+			this.WriteLog(requestInfo.CorrelationID, "Process the request\r\n==> Request:\r\n" + requestInfo.ToJson().ToString(Formatting.Indented));
 #endif
 			try
 			{
@@ -111,7 +43,7 @@ namespace net.vieapps.Services.OTPs
 			}
 			catch (Exception ex)
 			{
-				this.WriteInfo(requestInfo.CorrelationID, "Error occurred while processing\r\n==> Request:\r\n" + requestInfo.ToJson().ToString(Formatting.Indented), ex);
+				this.WriteLog(requestInfo.CorrelationID, "Error occurred while processing\r\n==> Request:\r\n" + requestInfo.ToJson().ToString(Formatting.Indented), ex);
 				throw this.GetRuntimeException(requestInfo, ex);
 			} 
 		}
