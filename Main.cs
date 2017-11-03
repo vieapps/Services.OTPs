@@ -22,6 +22,11 @@ namespace net.vieapps.Services.OTPs
 
 		public override string ServiceName { get { return "otps"; } }
 
+		public override void Start(string[] args = null, bool initializeRepository = true, System.Action nextAction = null, Func<Task> nextActionAsync = null)
+		{
+			base.Start(args, false, nextAction, nextActionAsync);
+		}
+
 		public override async Task<JObject> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
 #if DEBUG
