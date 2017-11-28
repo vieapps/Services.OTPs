@@ -17,10 +17,9 @@ namespace net.vieapps.Services.OTPs
 {
 	public class ServiceComponent : ServiceBase
 	{
+		public ServiceComponent() : base() { }
 
-		public ServiceComponent() { }
-
-		public override string ServiceName { get { return "otps"; } }
+		public override string ServiceName { get { return "OTPs"; } }
 
 		public override void Start(string[] args = null, bool initializeRepository = true, System.Action nextAction = null, Func<Task> nextActionAsync = null)
 		{
@@ -37,24 +36,24 @@ namespace net.vieapps.Services.OTPs
 				switch (requestInfo.ObjectName.Trim().ToLower())
 				{
 					case "vasco":
-						return await this.ProcessVascoOtpAsync(requestInfo, cancellationToken);
+						return await UtilityService.ExecuteTask<JObject>(() => this.ProcessVascoOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false);
 				}
 
 				// unknown
 				var msg = "The request is invalid [" + this.ServiceURI + "]: " + requestInfo.Verb + " /";
 				if (!string.IsNullOrWhiteSpace(requestInfo.ObjectName))
-					msg +=  requestInfo.ObjectName + (!string.IsNullOrWhiteSpace(requestInfo.GetObjectIdentity()) ? "/" + requestInfo.GetObjectIdentity() : "");
+					msg += requestInfo.ObjectName + (!string.IsNullOrWhiteSpace(requestInfo.GetObjectIdentity()) ? "/" + requestInfo.GetObjectIdentity() : "");
 				throw new InvalidRequestException(msg);
 			}
 			catch (Exception ex)
 			{
 				this.WriteLog(requestInfo.CorrelationID, "Error occurred while processing\r\n==> Request:\r\n" + requestInfo.ToJson().ToString(Formatting.Indented), ex);
 				throw this.GetRuntimeException(requestInfo, ex);
-			} 
+			}
 		}
 
 		#region Process VASCO one-time-password
-		Task<JObject> ProcessVascoOtpAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		JObject ProcessVascoOtpRequest(RequestInfo requestInfo)
 		{
 			var domain = "";
 			var account = "";
@@ -73,65 +72,59 @@ namespace net.vieapps.Services.OTPs
 					: "";
 			}
 
-			try
+			// authenticate via VASCO wrapper services
+			var results = (new AuthenticationHandler()).authUser(domain, account, "", password, "", CredentialsBase.RequestHostCode.Optional);
+
+			// if return code is not equal to zero, means error occured while signing-in
+			var resultCode = results.getReturnCode().ToString();
+			var statusCode = results.getStatusCode().ToString();
+			if (!resultCode.Equals("0"))
 			{
-				// authenticate via VASCO wrapper services
-				var results = (new AuthenticationHandler()).authUser(domain, account, "", password, "", CredentialsBase.RequestHostCode.Optional);
+				// get error details
+				var errorStack = results.getErrorStack();
+				var error = errorStack.Count > 0
+					? errorStack[0]
+					: null;
 
-				// if return code is not equal to zero, means error occured while signing-in
-				var resultCode = results.getReturnCode().ToString();
-				var statusCode = results.getStatusCode().ToString();
-				if (!resultCode.Equals("0"))
+				var errorDetails = "";
+				if (error != null)
+					errorDetails = "Details: " + error.ErrorMessage;
+
+				// login failed
+				if (resultCode.Equals("1"))
+					throw new OTPLoginFailedException();
+
+				// login failed with details error
+				else if (resultCode.Equals("-2"))
 				{
-					// get error details
-					var errorStack = results.getErrorStack();
-					var error = errorStack.Count > 0
-						? errorStack[0]
-						: null;
+					// account is not found
+					if (statusCode.Equals("1010"))
+						throw new OTPNotFoundException();
 
-					var errorDetails = "";
-					if (error != null)
-						errorDetails = "Details: " + error.ErrorMessage;
+					// account is locked
+					else if (statusCode.Equals("1007"))
+						throw new OTPLockedException();
 
-					// login failed
-					if (resultCode.Equals("1"))
+					// account is disabled
+					else if (statusCode.Equals("1009"))
+						throw new OTPDisabledException();
+
+					// invalid OTP password
+					else if (statusCode.Equals("1012"))
 						throw new OTPLoginFailedException();
 
-					// login failed with details error
-					else if (resultCode.Equals("-2"))
-					{
-						// account is not found
-						if (statusCode.Equals("1010"))
-							throw new OTPNotFoundException();
-
-						// account is locked
-						else if (statusCode.Equals("1007"))
-							throw new OTPLockedException();
-
-						// account is disabled
-						else if (statusCode.Equals("1009"))
-							throw new OTPDisabledException();
-
-						// invalid OTP password
-						else if (statusCode.Equals("1012"))
-							throw new OTPLoginFailedException();
-
-						// unknown
-						else
-							throw new OTPLoginFailedException("Failed. Unknown error: " + errorDetails);
-					}
+					// unknown
 					else
-						throw new OTPUnknownException("Unknown error: " + errorDetails);
+						throw new OTPLoginFailedException("Failed. Unknown error: " + errorDetails);
 				}
+				else
+					throw new OTPUnknownException("Unknown error: " + errorDetails);
+			}
 
-				return Task.FromResult(new JObject()
-				{
-				});
-			}
-			catch (Exception ex)
+			return new JObject()
 			{
-				return Task.FromException<JObject>(ex);
-			}
+				{"Status", "OK" }
+			};
 		}
 		#endregion
 
