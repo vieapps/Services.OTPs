@@ -3,6 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
+using System.Diagnostics;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -19,24 +20,26 @@ namespace net.vieapps.Services.OTPs
 	{
 		public ServiceComponent() : base() { }
 
-		public override string ServiceName { get { return "OTPs"; } }
-
-		public override void Start(string[] args = null, bool initializeRepository = true, System.Action nextAction = null, Func<Task> nextActionAsync = null)
+		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> next = null)
 		{
-			base.Start(args, false, nextAction, nextActionAsync);
+			base.Start(args, false, next);
 		}
+
+		public override string ServiceName { get { return "OTPs"; } }
 
 		public override async Task<JObject> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
 #if DEBUG
-			this.WriteLog(requestInfo.CorrelationID, "Process the request\r\n==> Request:\r\n" + requestInfo.ToJson().ToString(Formatting.Indented));
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			await this.WriteLogAsync(requestInfo.CorrelationID, $"Process the request\r\n{requestInfo.ToJson().ToString(Formatting.Indented)}").ConfigureAwait(false);
 #endif
 			try
 			{
 				switch (requestInfo.ObjectName.Trim().ToLower())
 				{
 					case "vasco":
-						return await UtilityService.ExecuteTask<JObject>(() => this.ProcessVascoOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false);
+						return await UtilityService.ExecuteTask(() => this.ProcessVascoOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false);
 				}
 
 				// unknown
@@ -47,9 +50,16 @@ namespace net.vieapps.Services.OTPs
 			}
 			catch (Exception ex)
 			{
-				this.WriteLog(requestInfo.CorrelationID, "Error occurred while processing\r\n==> Request:\r\n" + requestInfo.ToJson().ToString(Formatting.Indented), ex);
+				await this.WriteLogAsync(requestInfo.CorrelationID, "Error occurred while processing", ex).ConfigureAwait(false);
 				throw this.GetRuntimeException(requestInfo, ex);
 			}
+#if DEBUG
+			finally
+			{
+				stopwatch.Stop();
+				await this.WriteLogAsync(requestInfo.CorrelationID, $"The request is completed - Execution times: {stopwatch.GetElapsedTimes()}").ConfigureAwait(false);
+			}
+#endif
 		}
 
 		#region Process VASCO one-time-password
@@ -73,7 +83,7 @@ namespace net.vieapps.Services.OTPs
 			}
 
 			// authenticate via VASCO wrapper services
-			var results = (new AuthenticationHandler()).authUser(domain, account, "", password, "", CredentialsBase.RequestHostCode.Optional);
+			var results = new AuthenticationHandler().authUser(domain, account, "", password, "", CredentialsBase.RequestHostCode.Optional);
 
 			// if return code is not equal to zero, means error occured while signing-in
 			var resultCode = results.getReturnCode().ToString();
