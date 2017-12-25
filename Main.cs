@@ -33,10 +33,7 @@ namespace net.vieapps.Services.OTPs
 			// track
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
-			var uri = $"[{requestInfo.Verb}]: /{this.ServiceName}";
-			if (!string.IsNullOrWhiteSpace(requestInfo.ObjectName))
-				uri += requestInfo.ObjectName + "/" + (requestInfo.GetObjectIdentity() ?? "");
-			var logs = new List<string>() { $"Process the request {uri}" };
+			var logs = new List<string>() { $"Process the request ({requestInfo.Verb}): {requestInfo.URI}" };
 #if DEBUG || REQUESTLOGS
 			logs.Add($"Request ==> {requestInfo.ToJson().ToString(Formatting.Indented)}");
 #endif
@@ -50,7 +47,7 @@ namespace net.vieapps.Services.OTPs
 					case "vasco":
 						return await UtilityService.ExecuteTask(() => this.ProcessVascoOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false);
 				}
-				throw new InvalidRequestException("The request is invalid [" + this.ServiceURI + "]: " + uri);
+				throw new InvalidRequestException($"The request is invalid [({requestInfo.Verb}): {requestInfo.URI}]");
 			}
 			catch (Exception ex)
 			{
