@@ -30,12 +30,16 @@ namespace net.vieapps.Services.OTPs
 
 		public override async Task<JObject> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
+			// check
+			if (!requestInfo.Verb.Equals("GET"))
+				throw new MethodNotAllowedException(requestInfo.Verb);
+
 			// track
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 			var logs = new List<string>() { $"Begin process ({requestInfo.Verb}): {requestInfo.URI}" };
 #if DEBUG || REQUESTLOGS
-			logs.Add($"Request ==> {requestInfo.ToJson().ToString(Formatting.Indented)}");
+			logs.Add($"Request:\r\n{requestInfo.ToJson().ToString(Formatting.Indented)}");
 #endif
 			await this.WriteLogsAsync(requestInfo.CorrelationID, logs).ConfigureAwait(false);
 
@@ -46,8 +50,13 @@ namespace net.vieapps.Services.OTPs
 				{
 					case "vasco":
 						return await UtilityService.ExecuteTask(() => this.ProcessVascoOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false);
+
+					case "authenticator":
+						return await this.ProcessAuthenticatorAppRequest(requestInfo, cancellationToken).ConfigureAwait(false);
+
+					default:
+						throw new InvalidRequestException($"The request is invalid [({requestInfo.Verb}): {requestInfo.URI}]");
 				}
-				throw new InvalidRequestException($"The request is invalid [({requestInfo.Verb}): {requestInfo.URI}]");
 			}
 			catch (Exception ex)
 			{
@@ -61,7 +70,7 @@ namespace net.vieapps.Services.OTPs
 			}
 		}
 
-		#region Process VASCO one-time-password
+		#region Process one-time-password of VASCO Identity
 		JObject ProcessVascoOtpRequest(RequestInfo requestInfo)
 		{
 			var domain = "";
@@ -134,6 +143,56 @@ namespace net.vieapps.Services.OTPs
 			{
 				{"Status", "OK" }
 			};
+		}
+		#endregion
+
+		#region Process one-time password of authenticator app
+		async Task<JObject> ProcessAuthenticatorAppRequest(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			if (requestInfo.Extra == null)
+				throw new InvalidRequestException();
+
+			var account = requestInfo.Extra.ContainsKey("Account")
+				? requestInfo.Extra["Account"]
+				: "";
+			var identity = requestInfo.Extra.ContainsKey("ID")
+				? requestInfo.Extra["ID"]
+				: "";
+			var stamp = requestInfo.Extra.ContainsKey("Stamp")
+				? requestInfo.Extra["Stamp"]
+				: "";
+			var key = (identity + "@" + stamp).ToLower().GetHMACHash(UtilityService.GetAppSetting("Keys:OTPs", CryptoService.DefaultEncryptionKey).ToBytes(), "SHA512");
+
+			if (requestInfo.Extra.ContainsKey("Setup"))
+			{
+				var width = requestInfo.Extra.ContainsKey("Width")
+					? requestInfo.Extra["Width"].CastAs<int>()
+					: 300;
+				var height = requestInfo.Extra.ContainsKey("Height")
+					? requestInfo.Extra["Height"].CastAs<int>()
+					: 300;
+				var issuer = requestInfo.Extra.ContainsKey("Issuer")
+					? requestInfo.Extra["Issuer"]
+					: null;
+				return new JObject()
+				{
+					{ "Uri", await Authenticator.GenerateProvisioningImageUrlAsync(account, key, width, height, issuer).ConfigureAwait(false) }
+				};
+			}
+			else
+			{
+				var password = requestInfo.Extra.ContainsKey("Password")
+					? requestInfo.Extra["Password"]
+					: "";
+
+				if (string.IsNullOrWhiteSpace(password) || !password.Equals(Authenticator.GenerateOTP(key)))
+					throw new OTPLoginFailedException();
+
+				return new JObject()
+				{
+					{"Status", "OK" }
+				};
+			}
 		}
 		#endregion
 
