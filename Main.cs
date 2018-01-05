@@ -152,46 +152,34 @@ namespace net.vieapps.Services.OTPs
 			if (requestInfo.Extra == null)
 				throw new InvalidRequestException();
 
-			var account = requestInfo.Extra.ContainsKey("Account")
-				? requestInfo.Extra["Account"]
-				: "";
-			var identity = requestInfo.Extra.ContainsKey("ID")
-				? requestInfo.Extra["ID"]
-				: "";
-			var stamp = requestInfo.Extra.ContainsKey("Stamp")
-				? requestInfo.Extra["Stamp"]
-				: "";
+			var account = requestInfo.Extra.ContainsKey("Account") ? requestInfo.Extra["Account"] : "";
+			var identity = requestInfo.Extra.ContainsKey("ID") ? requestInfo.Extra["ID"] : "";
+			var stamp = requestInfo.Extra.ContainsKey("Stamp") ? requestInfo.Extra["Stamp"] : "";
 			var key = (identity + "@" + stamp).ToLower().GetHMACHash(UtilityService.GetAppSetting("Keys:OTPs", CryptoService.DefaultEncryptionKey).ToBytes(), "SHA512");
 
 			if (requestInfo.Extra.ContainsKey("Setup"))
 			{
-				var width = requestInfo.Extra.ContainsKey("Width")
-					? requestInfo.Extra["Width"].CastAs<int>()
-					: 300;
-				var height = requestInfo.Extra.ContainsKey("Height")
-					? requestInfo.Extra["Height"].CastAs<int>()
-					: 300;
-				var issuer = requestInfo.Extra.ContainsKey("Issuer")
-					? requestInfo.Extra["Issuer"]
-					: null;
+				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : 300;
+				var issuer = requestInfo.Extra.ContainsKey("Issuer") ? requestInfo.Extra["Issuer"] : null;
+				var uri = UtilityService.GetAppSetting("HttpUri:Files", "https://afs.vieapps.net")
+					+ "/otps/" + UtilityService.NewUID.Encrypt(CryptoService.DefaultEncryptionKey, true).Substring(UtilityService.GetRandomNumber(13, 43), 13) + ".png"
+					+ "?v=" + CryptoService.Encrypt(await OTPService.GenerateProvisioningImageAsync(account, key, size, issuer).ConfigureAwait(false)).ToHexa();
 				return new JObject()
 				{
-					{ "Uri", await Authenticator.GenerateProvisioningImageUrlAsync(account, key, width, height, issuer).ConfigureAwait(false) }
+					{ "Uri", uri }
 				};
 			}
 			else
 			{
-				var password = requestInfo.Extra.ContainsKey("Password")
-					? requestInfo.Extra["Password"]
-					: "";
-
-				if (string.IsNullOrWhiteSpace(password) || !password.Equals(Authenticator.GenerateOTP(key)))
+				var password = requestInfo.Extra.ContainsKey("Password") ? requestInfo.Extra["Password"] : "";
+				if (string.IsNullOrWhiteSpace(password))
 					throw new OTPLoginFailedException();
 
-				return new JObject()
-				{
-					{"Status", "OK" }
-				};
+				var interval = (requestInfo.Extra.ContainsKey("Type") ? requestInfo.Extra["Type"] : "App").IsEquals("SMS") ? 300 : 30;
+				if (!password.Equals(OTPService.GeneratePassword(key, interval)))
+					throw new OTPLoginFailedException();
+
+				return new JObject();
 			}
 		}
 		#endregion
