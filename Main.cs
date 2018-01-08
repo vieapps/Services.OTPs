@@ -19,6 +19,8 @@ namespace net.vieapps.Services.OTPs
 {
 	public class ServiceComponent : ServiceBase
 	{
+
+		#region Start
 		public ServiceComponent() : base() { }
 
 		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> next = null)
@@ -26,7 +28,16 @@ namespace net.vieapps.Services.OTPs
 			base.Start(args, false, next);
 		}
 
+		internal string AuthenticationKey
+		{
+			get
+			{
+				return this.GetKey("Authentication", "VIEApps-65E47754-NGX-50C0-Services-4565-Authentication-BA55-Key-A8CC23879C5D");
+			}
+		}
+
 		public override string ServiceName { get { return "OTPs"; } }
+		#endregion
 
 		public override async Task<JObject> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
@@ -48,11 +59,11 @@ namespace net.vieapps.Services.OTPs
 			{
 				switch (requestInfo.ObjectName.Trim().ToLower())
 				{
+					case "authenticator":
+						return await this.ProcessAuthenticatorOtpRequestAsync(requestInfo, cancellationToken).ConfigureAwait(false);
+
 					case "vasco":
 						return await UtilityService.ExecuteTask(() => this.ProcessVascoOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false);
-
-					case "authenticator":
-						return await this.ProcessAuthenticatorAppRequest(requestInfo, cancellationToken).ConfigureAwait(false);
 
 					default:
 						throw new InvalidRequestException($"The request is invalid [({requestInfo.Verb}): {requestInfo.URI}]");
@@ -70,12 +81,60 @@ namespace net.vieapps.Services.OTPs
 			}
 		}
 
+		#region Process one-time password of Authenticator
+		async Task<JObject> ProcessAuthenticatorOtpRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			// check
+			if (requestInfo.Extra == null)
+				throw new InvalidRequestException();
+
+			// prepare
+			var account = requestInfo.Extra.ContainsKey("Account") ? requestInfo.Extra["Account"].Decrypt(this.EncryptionKey) : "";
+			var id = requestInfo.Extra.ContainsKey("ID") ? requestInfo.Extra["ID"].Decrypt(this.EncryptionKey) : "";
+			var stamp = requestInfo.Extra.ContainsKey("Stamp") ? requestInfo.Extra["Stamp"].Decrypt(this.EncryptionKey) : "";
+
+			var key = (id + "@" + stamp).ToLower().GetHMACHash(this.AuthenticationKey.ToBytes(), "SHA512");
+			var response = new JObject();
+
+			// setup for provisioning
+			if (requestInfo.Extra.ContainsKey("Setup"))
+			{
+				var issuer = requestInfo.Extra.ContainsKey("Issuer") ? requestInfo.Extra["Issuer"].Decrypt(this.EncryptionKey) : null;
+				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : 300;
+				var provisioning = await OTPService.GenerateProvisioningImageAsync(account, key, issuer, size).ConfigureAwait(false);
+				var imageUri = this.GetHttpURI("Files", "https://afs.vieapps.net")
+					+ "/otps/" + UtilityService.NewUID.Encrypt().ToHexa(true).Substring(UtilityService.GetRandomNumber(13, 43), 13) + ".png"
+					+ "?v=" + CryptoService.Encrypt(provisioning, this.EncryptionKey.GenerateEncryptionKey(), this.EncryptionKey.GenerateEncryptionIV()).ToBase64().ToBase64Url(true);
+				response = new JObject()
+				{
+					{ "Uri", imageUri }
+				};
+			}
+
+			// validate input of client
+			else
+			{
+				var password = requestInfo.Extra.ContainsKey("Password") ? requestInfo.Extra["Password"].Decrypt(this.EncryptionKey) : "";
+				if (string.IsNullOrWhiteSpace(password))
+					throw new OTPLoginFailedException();
+
+				var interval = (requestInfo.Extra.ContainsKey("Type") ? requestInfo.Extra["Type"] : "App").IsEquals("SMS") ? 300 : 30;
+				if (!password.Equals(OTPService.GeneratePassword(key, interval)))
+					throw new OTPLoginFailedException();
+			}
+
+			// response
+			return response;
+		}
+		#endregion
+
 		#region Process one-time-password of VASCO Identity
 		JObject ProcessVascoOtpRequest(RequestInfo requestInfo)
 		{
+			// prepare
 			var domain = "";
 			var account = "";
-			var password = "";
+			var otp = "";
 
 			if (requestInfo.Extra != null)
 			{
@@ -85,13 +144,16 @@ namespace net.vieapps.Services.OTPs
 				account = requestInfo.Extra.ContainsKey("Account")
 					? requestInfo.Extra["Account"]
 					: "";
-				password = requestInfo.Extra.ContainsKey("Password")
-					? requestInfo.Extra["Password"]
+				otp = requestInfo.Extra.ContainsKey("OTP")
+					? requestInfo.Extra["OTP"]
 					: "";
 			}
 
+			if (string.IsNullOrWhiteSpace(domain) || string.IsNullOrWhiteSpace(account) || string.IsNullOrWhiteSpace(otp))
+				throw new OTPLoginFailedException();
+
 			// authenticate via VASCO wrapper services
-			var results = new AuthenticationHandler().authUser(domain, account, "", password, "", CredentialsBase.RequestHostCode.Optional);
+			var results = new AuthenticationHandler().authUser(domain, account, "", otp, "", CredentialsBase.RequestHostCode.Optional);
 
 			// if return code is not equal to zero, means error occured while signing-in
 			var resultCode = results.getReturnCode().ToString();
@@ -139,48 +201,7 @@ namespace net.vieapps.Services.OTPs
 					throw new OTPUnknownException("Unknown error: " + errorDetails);
 			}
 
-			return new JObject()
-			{
-				{"Status", "OK" }
-			};
-		}
-		#endregion
-
-		#region Process one-time password of authenticator app
-		async Task<JObject> ProcessAuthenticatorAppRequest(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
-		{
-			if (requestInfo.Extra == null)
-				throw new InvalidRequestException();
-
-			var account = requestInfo.Extra.ContainsKey("Account") ? requestInfo.Extra["Account"] : "";
-			var identity = requestInfo.Extra.ContainsKey("ID") ? requestInfo.Extra["ID"] : "";
-			var stamp = requestInfo.Extra.ContainsKey("Stamp") ? requestInfo.Extra["Stamp"] : "";
-			var key = (identity + "@" + stamp).ToLower().GetHMACHash(UtilityService.GetAppSetting("Keys:OTPs", CryptoService.DefaultEncryptionKey).ToBytes(), "SHA512");
-
-			if (requestInfo.Extra.ContainsKey("Setup"))
-			{
-				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : 300;
-				var issuer = requestInfo.Extra.ContainsKey("Issuer") ? requestInfo.Extra["Issuer"] : null;
-				var uri = UtilityService.GetAppSetting("HttpUri:Files", "https://afs.vieapps.net")
-					+ "/otps/" + UtilityService.NewUID.Encrypt(CryptoService.DefaultEncryptionKey, true).Substring(UtilityService.GetRandomNumber(13, 43), 13) + ".png"
-					+ "?v=" + CryptoService.Encrypt(await OTPService.GenerateProvisioningImageAsync(account, key, size, issuer).ConfigureAwait(false)).ToHexa();
-				return new JObject()
-				{
-					{ "Uri", uri }
-				};
-			}
-			else
-			{
-				var password = requestInfo.Extra.ContainsKey("Password") ? requestInfo.Extra["Password"] : "";
-				if (string.IsNullOrWhiteSpace(password))
-					throw new OTPLoginFailedException();
-
-				var interval = (requestInfo.Extra.ContainsKey("Type") ? requestInfo.Extra["Type"] : "App").IsEquals("SMS") ? 300 : 30;
-				if (!password.Equals(OTPService.GeneratePassword(key, interval)))
-					throw new OTPLoginFailedException();
-
-				return new JObject();
-			}
+			return new JObject();
 		}
 		#endregion
 
