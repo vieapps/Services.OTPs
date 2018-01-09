@@ -89,7 +89,6 @@ namespace net.vieapps.Services.OTPs
 				throw new InvalidRequestException();
 
 			// prepare
-			var account = requestInfo.Extra.ContainsKey("Account") ? requestInfo.Extra["Account"].Decrypt(this.EncryptionKey) : "";
 			var id = requestInfo.Extra.ContainsKey("ID") ? requestInfo.Extra["ID"].Decrypt(this.EncryptionKey) : "";
 			var stamp = requestInfo.Extra.ContainsKey("Stamp") ? requestInfo.Extra["Stamp"].Decrypt(this.EncryptionKey) : "";
 
@@ -99,12 +98,14 @@ namespace net.vieapps.Services.OTPs
 			// setup for provisioning
 			if (requestInfo.Extra.ContainsKey("Setup"))
 			{
+				var account = requestInfo.Extra.ContainsKey("Account") ? requestInfo.Extra["Account"].Decrypt(this.EncryptionKey) : "";
 				var issuer = requestInfo.Extra.ContainsKey("Issuer") ? requestInfo.Extra["Issuer"].Decrypt(this.EncryptionKey) : null;
 				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : 300;
 				var provisioning = await OTPService.GenerateProvisioningImageAsync(account, key, issuer, size).ConfigureAwait(false);
+				provisioning = CacheUtils.Helper.Combine(BitConverter.GetBytes(DateTime.Now.ToUnixTimestamp()), provisioning);
 				var imageUri = this.GetHttpURI("Files", "https://afs.vieapps.net")
-					+ "/otps/" + UtilityService.NewUID.Encrypt().ToHexa(true).Substring(UtilityService.GetRandomNumber(13, 43), 13) + ".png"
-					+ "?v=" + CryptoService.Encrypt(provisioning, this.EncryptionKey.GenerateEncryptionKey(), this.EncryptionKey.GenerateEncryptionIV()).ToBase64().ToBase64Url(true);
+					+ "/otps/" + UtilityService.NewUID.Encrypt().ToHexa(true).Substring(UtilityService.GetRandomNumber(13, 43), 13)
+					+ "?v=" + CryptoService.Encrypt(provisioning, this.EncryptionKey.GenerateEncryptionKey(), this.EncryptionKey.GenerateEncryptionIV()).ToBase64Url();
 				response = new JObject()
 				{
 					{ "Uri", imageUri }
