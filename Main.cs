@@ -102,10 +102,9 @@ namespace net.vieapps.Services.OTPs
 				var issuer = requestInfo.Extra.ContainsKey("Issuer") ? requestInfo.Extra["Issuer"].Decrypt(this.EncryptionKey) : null;
 				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : 300;
 				var provisioning = await OTPService.GenerateProvisioningImageAsync(account, key, issuer, size).ConfigureAwait(false);
-				provisioning = CacheUtils.Helper.Combine(BitConverter.GetBytes(DateTime.Now.ToUnixTimestamp()), provisioning);
 				var imageUri = this.GetHttpURI("Files", "https://afs.vieapps.net")
 					+ "/otps/" + UtilityService.NewUID.Encrypt().ToHexa(true).Substring(UtilityService.GetRandomNumber(13, 43), 13)
-					+ "?v=" + CryptoService.Encrypt(provisioning, this.EncryptionKey.GenerateEncryptionKey(), this.EncryptionKey.GenerateEncryptionIV()).ToBase64Url();
+					+ "?v=" + CryptoService.Encrypt(CacheUtils.Helper.Combine(BitConverter.GetBytes(DateTime.Now.ToUnixTimestamp()), provisioning), this.EncryptionKey.GenerateEncryptionKey(), this.EncryptionKey.GenerateEncryptionIV()).ToBase64Url();
 				response = new JObject()
 				{
 					{ "Uri", imageUri }
