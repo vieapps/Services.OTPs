@@ -60,7 +60,7 @@ namespace net.vieapps.Services.OTPs
 				switch (requestInfo.ObjectName.Trim().ToLower())
 				{
 					case "authenticator":
-						return await this.ProcessAuthenticatorOtpRequestAsync(requestInfo, cancellationToken).ConfigureAwait(false);
+						return await UtilityService.ExecuteTask(() => this.ProcessAuthenticatorOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false);
 
 					case "vasco":
 						return await UtilityService.ExecuteTask(() => this.ProcessVascoOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false);
@@ -82,7 +82,7 @@ namespace net.vieapps.Services.OTPs
 		}
 
 		#region Process one-time password of Authenticator
-		async Task<JObject> ProcessAuthenticatorOtpRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		JObject ProcessAuthenticatorOtpRequest(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			// check
 			if (requestInfo.Extra == null)
@@ -101,10 +101,12 @@ namespace net.vieapps.Services.OTPs
 				var account = requestInfo.Extra.ContainsKey("Account") ? requestInfo.Extra["Account"].Decrypt(this.EncryptionKey) : "";
 				var issuer = requestInfo.Extra.ContainsKey("Issuer") ? requestInfo.Extra["Issuer"].Decrypt(this.EncryptionKey) : null;
 				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : 300;
-				var provisioning = await OTPService.GenerateProvisioningImageAsync(account, key, issuer, size).ConfigureAwait(false);
+				var provisioningUri = OTPService.GenerateProvisioningUri(account, key, issuer);
 				var imageUri = this.GetHttpURI("Files", "https://afs.vieapps.net")
-					+ "/otps/" + UtilityService.NewUID.Encrypt().ToHexa(true).Substring(UtilityService.GetRandomNumber(13, 43), 13)
-					+ "?v=" + CryptoService.Encrypt(CacheUtils.Helper.Combine(BitConverter.GetBytes(DateTime.Now.ToUnixTimestamp()), provisioning), this.EncryptionKey.GenerateEncryptionKey(), this.EncryptionKey.GenerateEncryptionIV()).ToBase64Url();
+					+ "/qrcodes/" + UtilityService.NewUID.Encrypt().ToHexa(true).Substring(UtilityService.GetRandomNumber(13, 43), 13)
+					+ "?v=" + provisioningUri.Encrypt(this.EncryptionKey).ToBase64Url()
+					+ "&t=" + DateTime.Now.ToUnixTimestamp().ToString().Encrypt(this.EncryptionKey).ToBase64Url()
+					+ "&s=" + size + "&ecl=L";
 				response = new JObject()
 				{
 					{ "Uri", imageUri }
