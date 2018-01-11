@@ -99,14 +99,17 @@ namespace net.vieapps.Services.OTPs
 			if (requestInfo.Extra.ContainsKey("Setup"))
 			{
 				var account = requestInfo.Extra.ContainsKey("Account") ? requestInfo.Extra["Account"].Decrypt(this.EncryptionKey) : "";
-				var issuer = requestInfo.Extra.ContainsKey("Issuer") ? requestInfo.Extra["Issuer"].Decrypt(this.EncryptionKey) : null;
-				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : 300;
-				var provisioningUri = OTPService.GenerateProvisioningUri(account, key, issuer);
+				var issuer = requestInfo.Extra.ContainsKey("Issuer") ? requestInfo.Extra["Issuer"].Decrypt(this.EncryptionKey) : "";
+				if (string.IsNullOrWhiteSpace(issuer))
+					issuer = UtilityService.GetAppSetting("OTPs:Issuer", "VIE Apps NGX");
+				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : UtilityService.GetAppSetting("OTPs:QRCode-Size", "300").CastAs<int>();
+				var ecl = requestInfo.Extra.ContainsKey("ECCLevel") ? requestInfo.Extra["ECCLevel"] : UtilityService.GetAppSetting("OTPs:QRCode-ECCLevel", "L");
+				var provisioningUri = OTPService.GenerateProvisioningUri(account, key, issuer.UrlEncode());
 				var imageUri = this.GetHttpURI("Files", "https://afs.vieapps.net")
 					+ "/qrcodes/" + UtilityService.NewUID.Encrypt().ToHexa(true).Substring(UtilityService.GetRandomNumber(13, 43), 13)
-					+ "?v=" + provisioningUri.Encrypt(this.EncryptionKey).ToBase64Url()
-					+ "&t=" + DateTime.Now.ToUnixTimestamp().ToString().Encrypt(this.EncryptionKey).ToBase64Url()
-					+ "&s=" + size + "&ecl=L";
+					+ "?v=" + provisioningUri.Encrypt(this.EncryptionKey).ToBase64Url(true)
+					+ "&t=" + DateTime.Now.ToUnixTimestamp().ToString().Encrypt(this.EncryptionKey).ToBase64Url(true)
+					+ "&s=" + size + "&ecl=" + ecl;
 				response = new JObject()
 				{
 					{ "Uri", imageUri }
