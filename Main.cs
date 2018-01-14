@@ -123,7 +123,7 @@ namespace net.vieapps.Services.OTPs
 				if (string.IsNullOrWhiteSpace(password))
 					throw new OTPLoginFailedException();
 
-				var interval = (requestInfo.Extra.ContainsKey("Type") ? requestInfo.Extra["Type"] : "App").IsEquals("SMS") ? 300 : 30;
+				var interval = (requestInfo.Extra.ContainsKey("Type") ? requestInfo.Extra["Type"] : "App").IsEquals("App") ? 30 : 300;
 				if (!password.Equals(OTPService.GeneratePassword(key, interval)))
 					throw new OTPLoginFailedException();
 			}
