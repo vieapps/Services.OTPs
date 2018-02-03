@@ -45,15 +45,6 @@ namespace net.vieapps.Services.OTPs
 			if (!requestInfo.Verb.Equals("GET"))
 				throw new MethodNotAllowedException(requestInfo.Verb);
 
-			// track
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-			var logs = new List<string>() { $"Begin process ({requestInfo.Verb}): {requestInfo.URI}" };
-#if DEBUG || REQUESTLOGS
-			logs.Add($"Request:\r\n{requestInfo.ToJson().ToString(Formatting.Indented)}");
-#endif
-			await this.WriteLogsAsync(requestInfo.CorrelationID, logs).ConfigureAwait(false);
-
 			// process
 			try
 			{
@@ -73,11 +64,6 @@ namespace net.vieapps.Services.OTPs
 			{
 				await this.WriteLogAsync(requestInfo.CorrelationID, "Error occurred while processing", ex).ConfigureAwait(false);
 				throw this.GetRuntimeException(requestInfo, ex);
-			}
-			finally
-			{
-				stopwatch.Stop();
-				await this.WriteLogAsync(requestInfo.CorrelationID, $"End process - Execution times: {stopwatch.GetElapsedTimes()}").ConfigureAwait(false);
 			}
 		}
 
@@ -207,12 +193,6 @@ namespace net.vieapps.Services.OTPs
 			}
 
 			return new JObject();
-		}
-		#endregion
-
-		#region Process inter-communicate message
-		protected override void ProcessInterCommunicateMessage(CommunicateMessage message)
-		{
 		}
 		#endregion
 
