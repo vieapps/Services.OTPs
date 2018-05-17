@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>net.vieapps.Services.OTPs</RootNamespace>
-    <AssemblyName>VIEApps.Services.OTPs</AssemblyName>
+    <AssemblyName>VIEApps.Services.OTPs.Vasco</AssemblyName>
     <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
@@ -37,14 +37,14 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Base\VIEApps.Services.Base.csproj">
+    <ProjectReference Include="..\..\Base\VIEApps.Services.Base.csproj">
       <Project>{c496cef5-9ff8-4364-9860-fcdefed4e277}</Project>
       <Name>VIEApps.Services.Base</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="IdentikeyAuthWrapper-3.2">
-      <HintPath>..\..\..\VIE Portal NG\Packages\IdentikeyAuthWrapper-3.2.dll</HintPath>
+      <HintPath>..\..\..\..\VIE Portal NG\Packages\IdentikeyAuthWrapper-3.2.dll</HintPath>
     </Reference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
