@@ -14,11 +14,11 @@ namespace net.vieapps.Services.OTPs
 	{
 		public ServiceComponent() : base() { }
 
-		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> next = null) => base.Start(args, false, next);
-
 		internal string AuthenticationKey => this.GetKey("Authentication", "VIEApps-65E47754-NGX-50C0-Services-4565-Authentication-BA55-Key-A8CC23879C5D");
 
 		public override string ServiceName => "AuthenticatorOTP";
+
+		public override void Start(string[] args = null, bool initializeRepository = true, Func<ServiceBase, Task> nextAsync = null) => base.Start(args, false, nextAsync);
 
 		public override async Task<JObject> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
@@ -44,7 +44,7 @@ namespace net.vieapps.Services.OTPs
 			var id = requestInfo.Extra.ContainsKey("ID") ? requestInfo.Extra["ID"].Decrypt(this.EncryptionKey) : "";
 			var stamp = requestInfo.Extra.ContainsKey("Stamp") ? requestInfo.Extra["Stamp"].Decrypt(this.EncryptionKey) : "";
 
-			var key = (id + "@" + stamp).ToLower().GetHMACHash(this.AuthenticationKey.ToBytes(), "SHA512");
+			var key = $"{id}@{stamp}".ToLower().GetHMACHash(this.AuthenticationKey.ToBytes(), "SHA512");
 			var response = new JObject();
 
 			// setup for provisioning
@@ -57,12 +57,12 @@ namespace net.vieapps.Services.OTPs
 				var size = requestInfo.Extra.ContainsKey("Size") ? requestInfo.Extra["Size"].CastAs<int>() : UtilityService.GetAppSetting("OTPs:QRCode-Size", "300").CastAs<int>();
 				var ecl = requestInfo.Extra.ContainsKey("ECCLevel") ? requestInfo.Extra["ECCLevel"] : UtilityService.GetAppSetting("OTPs:QRCode-ECCLevel", "L");
 				var provisioningUri = OTPService.GenerateProvisioningUri(account, key, issuer.UrlEncode());
-				var imageUri = this.GetHttpURI("Files", "https://afs.vieapps.net")
+
+				response["Uri"] = this.GetHttpURI("Files", "https://afs.vieapps.net")
 					+ "/qrcodes/" + UtilityService.NewUUID.Encrypt(null, true).Substring(UtilityService.GetRandomNumber(13, 43), 13)
 					+ "?v=" + provisioningUri.Encrypt(this.EncryptionKey).ToBase64Url(true)
 					+ "&t=" + DateTime.Now.ToUnixTimestamp().ToString().Encrypt(this.EncryptionKey).ToBase64Url(true)
 					+ "&s=" + size + "&ecl=" + ecl;
-				response.Add("Uri", new JValue(imageUri));
 			}
 
 			// validate input of client
@@ -80,7 +80,6 @@ namespace net.vieapps.Services.OTPs
 			// response
 			return response;
 		}
-
 	}
 
 	[Serializable]

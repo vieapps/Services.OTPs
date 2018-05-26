@@ -5,9 +5,11 @@ using System.Threading.Tasks;
 using System.Runtime.Serialization;
 
 using Newtonsoft.Json.Linq;
-using net.vieapps.Components.Utility;
+
 using IdentikeyAuthWrapper.vasco.identikey.model;
 using IdentikeyAuthWrapper.vasco.identikey.authentication;
+
+using net.vieapps.Components.Utility;
 #endregion
 
 namespace net.vieapps.Services.OTPs
@@ -16,7 +18,7 @@ namespace net.vieapps.Services.OTPs
 	{
 		public ServiceComponent() : base() { }
 
-		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> next = null) => base.Start(args, false, next);
+		public override void Start(string[] args = null, bool initializeRepository = true, Func<ServiceBase, Task> next = null) => base.Start(args, false, next);
 
 		public override string ServiceName => "VascoOTP";
 
