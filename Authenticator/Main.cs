@@ -58,7 +58,7 @@ namespace net.vieapps.Services.OTPs
 				var ecl = requestInfo.Extra.ContainsKey("ECCLevel") ? requestInfo.Extra["ECCLevel"] : UtilityService.GetAppSetting("OTPs:QRCode-ECCLevel", "L");
 				var provisioningUri = OTPService.GenerateProvisioningUri(account, key, issuer.UrlEncode());
 
-				response["Uri"] = this.GetHttpURI("Files", "https://afs.vieapps.net")
+				response["Uri"] = this.GetHttpURI("Files", "https://fs.vieapps.net")
 					+ "/qrcodes/" + UtilityService.NewUUID.Encrypt(null, true).Substring(UtilityService.GetRandomNumber(13, 43), 13)
 					+ "?v=" + provisioningUri.Encrypt(this.EncryptionKey).ToBase64Url(true)
 					+ "&t=" + DateTime.Now.ToUnixTimestamp().ToString().Encrypt(this.EncryptionKey).ToBase64Url(true)
