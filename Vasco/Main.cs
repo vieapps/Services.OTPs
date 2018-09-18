@@ -16,13 +16,11 @@ namespace net.vieapps.Services.OTPs
 {
 	public class ServiceComponent : ServiceBase
 	{
-		public ServiceComponent() : base() { }
+		public override string ServiceName => "VascoOTP";
 
 		public override void Start(string[] args = null, bool initializeRepository = true, Func<ServiceBase, Task> next = null) => base.Start(args, false, next);
 
-		public override string ServiceName => "VascoOTP";
-
-		public override async Task<JObject> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		public override async Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			try
 			{

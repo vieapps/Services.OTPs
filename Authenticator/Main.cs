@@ -12,15 +12,13 @@ namespace net.vieapps.Services.OTPs
 {
 	public class ServiceComponent : ServiceBase
 	{
-		public ServiceComponent() : base() { }
+		public override string ServiceName => "AuthenticatorOTP";
 
 		internal string AuthenticationKey => this.GetKey("Authentication", "VIEApps-65E47754-NGX-50C0-Services-4565-Authentication-BA55-Key-A8CC23879C5D");
 
-		public override string ServiceName => "AuthenticatorOTP";
-
 		public override void Start(string[] args = null, bool initializeRepository = true, Func<ServiceBase, Task> nextAsync = null) => base.Start(args, false, nextAsync);
 
-		public override async Task<JObject> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		public override async Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			try
 			{
