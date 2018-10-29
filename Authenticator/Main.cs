@@ -8,7 +8,7 @@ using Newtonsoft.Json.Linq;
 using net.vieapps.Components.Utility;
 #endregion
 
-namespace net.vieapps.Services.OTPs
+namespace net.vieapps.Services.OTPs.Authenticator
 {
 	public class ServiceComponent : ServiceBase
 	{
