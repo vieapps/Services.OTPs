@@ -16,7 +16,7 @@ namespace net.vieapps.Services.OTPs.Authenticator
 
 		internal string AuthenticationKey => this.GetKey("Authentication", "VIEApps-65E47754-NGX-50C0-Services-4565-Authentication-BA55-Key-A8CC23879C5D");
 
-		public override void Start(string[] args = null, bool initializeRepository = true, Func<ServiceBase, Task> nextAsync = null) => base.Start(args, false, nextAsync);
+		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> nextAsync = null) => base.Start(args, false, nextAsync);
 
 		public override async Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
@@ -57,10 +57,10 @@ namespace net.vieapps.Services.OTPs.Authenticator
 				var provisioningUri = OTPService.GenerateProvisioningUri(account, key, issuer.UrlEncode());
 
 				response["Uri"] = this.GetHttpURI("Files", "https://fs.vieapps.net")
-					+ "/qrcodes/" + UtilityService.NewUUID.Encrypt(null, true).Substring(UtilityService.GetRandomNumber(13, 43), 13)
-					+ "?v=" + provisioningUri.Encrypt(this.EncryptionKey).ToBase64Url(true)
-					+ "&t=" + DateTime.Now.ToUnixTimestamp().ToString().Encrypt(this.EncryptionKey).ToBase64Url(true)
-					+ "&s=" + size + "&ecl=" + ecl;
+					+ $"/qrcodes/{UtilityService.NewUUID.Encrypt(null, true).Substring(UtilityService.GetRandomNumber(13, 43), 13)}"
+					+ $"?v={provisioningUri.Encrypt(this.EncryptionKey).ToBase64Url(true)}"
+					+ $"&t={DateTime.Now.ToUnixTimestamp().ToString().Encrypt(this.EncryptionKey).ToBase64Url(true)}"
+					+ $"&s={size}&ecl={ecl}";
 			}
 
 			// validate input of client
