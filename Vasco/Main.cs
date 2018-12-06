@@ -12,13 +12,13 @@ using IdentikeyAuthWrapper.vasco.identikey.authentication;
 using net.vieapps.Components.Utility;
 #endregion
 
-namespace net.vieapps.Services.OTPs
+namespace net.vieapps.Services.OTPs.Vasco
 {
 	public class ServiceComponent : ServiceBase
 	{
 		public override string ServiceName => "VascoOTP";
 
-		public override void Start(string[] args = null, bool initializeRepository = true, Func<ServiceBase, Task> next = null) => base.Start(args, false, next);
+		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> nextAsync = null) => base.Start(args, false, nextAsync);
 
 		public override async Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{

@@ -2,16 +2,16 @@
 
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
+		<RootNamespace>net.vieapps.Services.OTPs</RootNamespace>
 		<AssemblyName>VIEApps.Services.OTPs.Authenticator</AssemblyName>
 		<AssemblyTitle>VIEApps NGX OTPs</AssemblyTitle>
 		<Authors>VIEApps.net</Authors>
 		<Company>VIEApps.net</Company>
 		<Product>VIEApps NGX</Product>
 		<Copyright>© 2018 VIEApps.net</Copyright>
-		<Version>10.2.1810.2</Version>
-		<AssemblyVersion>10.2.1810.2</AssemblyVersion>
-		<FileVersion>10.2.1810.2</FileVersion>
-		<InformationalVersion>v10.2.netstandard-2+rev:2018.10.30</InformationalVersion>
+		<AssemblyVersion>10.2.1812.3</AssemblyVersion>
+		<FileVersion>10.2.1812.3</FileVersion>
+		<InformationalVersion>v10.2.netstandard-2+rev:2018.12.06-latest.components</InformationalVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
