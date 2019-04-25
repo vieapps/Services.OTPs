@@ -3,12 +3,11 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
-
+using System.Diagnostics;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
 using IdentikeyAuthWrapper.vasco.identikey.model;
 using IdentikeyAuthWrapper.vasco.identikey.authentication;
-
 using net.vieapps.Components.Utility;
 #endregion
 
@@ -22,15 +21,25 @@ namespace net.vieapps.Services.OTPs.Vasco
 
 		public override async Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
+			var stopwatch = Stopwatch.StartNew();
+			this.WriteLogs(requestInfo, $"Begin request ({requestInfo.Verb} {requestInfo.GetURI()})");
 			try
 			{
-				return requestInfo.Verb.Equals("GET")
+				var json = requestInfo.Verb.Equals("GET")
 					? await UtilityService.ExecuteTask(() => this.ProcessOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false)
 					: throw new MethodNotAllowedException(requestInfo.Verb);
+				stopwatch.Stop();
+				this.WriteLogs(requestInfo, $"Success response - Execution times: {stopwatch.GetElapsedTimes()}");
+				if (this.IsDebugResultsEnabled)
+					this.WriteLogs(requestInfo,
+						$"- Request: {requestInfo.ToJson().ToString(this.IsDebugLogEnabled ? Formatting.Indented : Formatting.None)}" + "\r\n" +
+						$"- Response: {json?.ToString(this.IsDebugLogEnabled ? Formatting.Indented : Formatting.None)}"
+					);
+				return json;
 			}
 			catch (Exception ex)
 			{
-				throw this.GetRuntimeException(requestInfo, ex);
+				throw this.GetRuntimeException(requestInfo, ex, stopwatch);
 			}
 		}
 
