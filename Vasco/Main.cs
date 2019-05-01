@@ -17,16 +17,17 @@ namespace net.vieapps.Services.OTPs.Vasco
 	{
 		public override string ServiceName => "VascoOTP";
 
-		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> nextAsync = null) => base.Start(args, false, nextAsync);
+		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> nextAsync = null)
+			=> base.Start(args, false, nextAsync);
 
-		public override async Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		public override Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			var stopwatch = Stopwatch.StartNew();
 			this.WriteLogs(requestInfo, $"Begin request ({requestInfo.Verb} {requestInfo.GetURI()})");
 			try
 			{
 				var json = requestInfo.Verb.Equals("GET")
-					? await UtilityService.ExecuteTask(() => this.ProcessOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false)
+					? this.ProcessOtpRequest(requestInfo)
 					: throw new MethodNotAllowedException(requestInfo.Verb);
 				stopwatch.Stop();
 				this.WriteLogs(requestInfo, $"Success response - Execution times: {stopwatch.GetElapsedTimes()}");
@@ -35,11 +36,11 @@ namespace net.vieapps.Services.OTPs.Vasco
 						$"- Request: {requestInfo.ToJson().ToString(this.IsDebugLogEnabled ? Formatting.Indented : Formatting.None)}" + "\r\n" +
 						$"- Response: {json?.ToString(this.IsDebugLogEnabled ? Formatting.Indented : Formatting.None)}"
 					);
-				return json;
+				return Task.FromResult(json as JToken);
 			}
 			catch (Exception ex)
 			{
-				throw this.GetRuntimeException(requestInfo, ex, stopwatch);
+				return Task.FromException<JToken>(this.GetRuntimeException(requestInfo, ex, stopwatch));
 			}
 		}
 

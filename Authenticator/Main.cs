@@ -17,16 +17,17 @@ namespace net.vieapps.Services.OTPs.Authenticator
 
 		internal string AuthenticationKey => this.GetKey("Authentication", "VIEApps-65E47754-NGX-50C0-Services-4565-Authentication-BA55-Key-A8CC23879C5D");
 
-		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> nextAsync = null) => base.Start(args, false, nextAsync);
+		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> nextAsync = null)
+			=> base.Start(args, false, nextAsync);
 
-		public override async Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		public override Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			var stopwatch = Stopwatch.StartNew();
 			this.WriteLogs(requestInfo, $"Begin request ({requestInfo.Verb} {requestInfo.GetURI()})");
 			try
 			{
 				var json = requestInfo.Verb.Equals("GET")
-					? await UtilityService.ExecuteTask(() => this.ProcessOtpRequest(requestInfo), cancellationToken).ConfigureAwait(false)
+					? this.ProcessOtpRequest(requestInfo)
 					: throw new MethodNotAllowedException(requestInfo.Verb);
 				stopwatch.Stop();
 				this.WriteLogs(requestInfo, $"Success response - Execution times: {stopwatch.GetElapsedTimes()}");
@@ -35,11 +36,11 @@ namespace net.vieapps.Services.OTPs.Authenticator
 						$"- Request: {requestInfo.ToJson().ToString(this.IsDebugLogEnabled ? Formatting.Indented : Formatting.None)}" + "\r\n" +
 						$"- Response: {json?.ToString(this.IsDebugLogEnabled ? Formatting.Indented : Formatting.None)}"
 					);
-				return json;
+				return Task.FromResult(json as JToken);
 			}
 			catch (Exception ex)
 			{
-				throw this.GetRuntimeException(requestInfo, ex, stopwatch);
+				return Task.FromException<JToken>(this.GetRuntimeException(requestInfo, ex, stopwatch));
 			}
 		}
 
@@ -67,7 +68,7 @@ namespace net.vieapps.Services.OTPs.Authenticator
 				var ecl = requestInfo.Extra.ContainsKey("ECCLevel") ? requestInfo.Extra["ECCLevel"] : UtilityService.GetAppSetting("OTPs:QRCode-ECCLevel", "L");
 				var provisioningUri = OTPService.GenerateProvisioningUri(account, key, issuer.UrlEncode());
 
-				response["Uri"] = this.GetHttpURI("Files", "https://fs.vieapps.net")
+				response["URI"] = this.GetHttpURI("Files", "https://fs.vieapps.net")
 					+ $"/qrcodes/{UtilityService.NewUUID.Encrypt(null, true).Substring(UtilityService.GetRandomNumber(13, 43), 13)}"
 					+ $"?v={provisioningUri.Encrypt(this.EncryptionKey).ToBase64Url(true)}"
 					+ $"&t={DateTime.Now.ToUnixTimestamp().ToString().Encrypt(this.EncryptionKey).ToBase64Url(true)}"
