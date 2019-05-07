@@ -38,20 +38,15 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Abstractions\VIEApps.Services.Abstractions.csproj">
-      <Project>{27cd8040-0800-40ae-9d73-a8bebd5116d4}</Project>
-      <Name>VIEApps.Services.Abstractions</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Base\VIEApps.Services.Base.csproj">
-      <Project>{c496cef5-9ff8-4364-9860-fcdefed4e277}</Project>
-      <Name>VIEApps.Services.Base</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="IdentikeyAuthWrapper-3.2, Version=1.2.0.3, Culture=neutral, PublicKeyToken=65dd3bac475b4874, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\VIEPortal NG\Packages\IdentikeyAuthWrapper-3.2.dll</HintPath>
     </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="VIEApps.Services.Base">
+      <Version>10.2.1905.2</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
