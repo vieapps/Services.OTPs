@@ -44,7 +44,7 @@ namespace net.vieapps.Services.OTPs.Authenticator
 			}
 		}
 
-		JObject ProcessOtpRequest(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		JObject ProcessOtpRequest(RequestInfo requestInfo)
 		{
 			// check
 			if (requestInfo.Extra == null)
