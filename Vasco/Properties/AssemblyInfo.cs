@@ -6,8 +6,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("VIEApps NGX OTPs")]
 [assembly: AssemblyCompany("VIEApps.net")]
 [assembly: AssemblyProduct("VIEApps NGX")]
-[assembly: AssemblyCopyright("© 2019 VIEApps.net")]
+[assembly: AssemblyCopyright("© 2020 VIEApps.net")]
 
-[assembly: AssemblyVersion("10.3.1906.4")]
-[assembly: AssemblyFileVersion("10.3.1906.4")]
-[assembly: AssemblyInformationalVersion("v10.3+rev:2019.06.20-multiple.targets")]
+[assembly: AssemblyVersion("10.3.2001.2")]
+[assembly: AssemblyFileVersion("10.3.2001.2")]
+[assembly: AssemblyInformationalVersion("10.3@net48-build:2020.01.09#sn:false")]
