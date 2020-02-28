@@ -17,10 +17,10 @@ namespace net.vieapps.Services.OTPs.Vasco
 	{
 		public override string ServiceName => "VascoOTP";
 
-		public override void Start(string[] args = null, bool initializeRepository = true, Func<IService, Task> nextAsync = null)
-			=> base.Start(args, false, nextAsync);
+		public override void Start(string[] args = null, bool initializeRepository = true, Action<IService> next = null)
+			=> base.Start(args, false, next);
 
-		public override Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default(CancellationToken))
+		public override Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default)
 		{
 			var stopwatch = Stopwatch.StartNew();
 			this.WriteLogs(requestInfo, $"Begin request ({requestInfo.Verb} {requestInfo.GetURI()})");
