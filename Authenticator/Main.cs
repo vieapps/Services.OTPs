@@ -80,6 +80,5 @@ namespace net.vieapps.Services.OTPs.Authenticator
 	{
 		public OTPLoginFailedException() : base("Bad OTP") { }
 		public OTPLoginFailedException(string message) : base(message) { }
-		public OTPLoginFailedException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 	}
 }
