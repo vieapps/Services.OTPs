@@ -23,7 +23,7 @@ namespace net.vieapps.Services.OTPs.Authenticator
 		public override Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default)
 		{
 			var stopwatch = Stopwatch.StartNew();
-			this.WriteLogsAsync(requestInfo, $"Begin request ({requestInfo.Verb} {requestInfo.GetURI()})").Run();
+			this.WriteLogsAsync(requestInfo, $"Begin request ({requestInfo.Verb} {requestInfo.GetURI()})").Execute();
 			try
 			{
 				// check
@@ -64,9 +64,9 @@ namespace net.vieapps.Services.OTPs.Authenticator
 				else if (!otp.IsEquals(requestInfo.Extra.ContainsKey("Password") ? requestInfo.Extra["Password"].Decrypt(this.EncryptionKey) : ""))
 					return Task.FromException<JToken>(new OTPLoginFailedException());
 
-				this.WriteLogsAsync(requestInfo, $"Success response - Execution times: {stopwatch.GetElapsedTimes()}").Run();
+				this.WriteLogsAsync(requestInfo, $"Success response - Execution times: {stopwatch.GetElapsedTimes()}").Execute();
 				if (this.IsDebugResultsEnabled)
-					this.WriteLogsAsync(requestInfo, $"- Request: {requestInfo.ToString(this.JsonFormat)}" + "\r\n" + $"- Response: {json?.ToString(this.JsonFormat)}").Run();
+					this.WriteLogsAsync(requestInfo, $"- Request: {requestInfo.ToString(this.JsonFormat)}" + "\r\n" + $"- Response: {json?.ToString(this.JsonFormat)}").Execute();
 				return Task.FromResult<JToken>(json);
 			}
 			catch (Exception ex)
