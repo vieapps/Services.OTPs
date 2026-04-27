@@ -1,12 +1,10 @@
-﻿#region Related components
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.Serialization;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
+using net.vieapps.Components.Caching;
 using net.vieapps.Components.Utility;
-#endregion
 
 namespace net.vieapps.Services.OTPs.Authenticator
 {
@@ -14,10 +12,12 @@ namespace net.vieapps.Services.OTPs.Authenticator
 	{
 		public override string ServiceName => "AuthenticatorOTP";
 
-		public override void Start(string[] args = null, bool initializeRepository = true, Action<IService> next = null)
+		Cache Cache { get; } = Cache.CreateInstance("VIEApps-Services-AuthenticatorOTP", Components.Utility.Logger.GetLoggerFactory(), "true".IsEquals(UtilityService.GetAppSetting("AuthenticatorOTP:Cache:L1")));
+
+		public override Task StartAsync(string[] args = null, bool initializeRepository = true, Action<IService> next = null)
 		{
 			this.Syncable = false;
-			base.Start(args, false, next);
+			return base.StartAsync(args, false, this.Cache, next);
 		}
 
 		public override Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default)
