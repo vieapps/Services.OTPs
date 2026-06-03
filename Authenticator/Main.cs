@@ -23,6 +23,7 @@ namespace net.vieapps.Services.OTPs.Authenticator
 		public override Task<JToken> ProcessRequestAsync(RequestInfo requestInfo, CancellationToken cancellationToken = default)
 		{
 			var stopwatch = Stopwatch.StartNew();
+			this.Statistics.RpcEntered();
 			this.WriteLogsAsync(requestInfo, $"Begin request ({requestInfo.Verb} {requestInfo.GetURI()})").Execute();
 			try
 			{
@@ -72,6 +73,10 @@ namespace net.vieapps.Services.OTPs.Authenticator
 			catch (Exception ex)
 			{
 				return Task.FromException<JToken>(this.GetRuntimeException(requestInfo, ex, stopwatch));
+			}
+			finally
+			{
+				this.Statistics.RpcCompleted(stopwatch);
 			}
 		}
 	}
